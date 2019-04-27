@@ -16,7 +16,6 @@ a) 如剩余字节为一位, 则补2个'='
 b) 如剩余字节为两位, 则补1个'='
 
 4.根据每一项二进制算出十进制, 并找出对应的char
-
 */
 
 const b64chars =
@@ -33,7 +32,7 @@ function splitByCount(str, count) {
   return arr
 }
 
-function pad(str, count) {
+function padStart(str, count) {
   return str.padStart(count, '0')
 }
 
@@ -48,7 +47,7 @@ function encode(str) {
     let str = ''
     for (let i = 0; i < each.length; i++) {
       const c = each.charCodeAt(i).toString(2)
-      str += c.length === 8 ? c : pad(c, 8)
+      str += c.length === 8 ? c : padStart(c, 8)
     }
     codeArr.push(str)
   })
@@ -87,28 +86,43 @@ function encode(str) {
 }
 
 function decode(str) {
-  const str4byteArr = splitByCount(str, 4)
+  // 第一步, 每4个字符分为一组
+  const strSplitBy4 = splitByCount(str, 4)
   let bit8code = []
-  str4byteArr.forEach(each => {
+  // 遍历每一组的字符
+  strSplitBy4.forEach(each => {
     const code = []
     const len = each.length
+    // 对每组的每个字符操作
     for (let i = 0; i < len; i++) {
       const char = each[i]
+      // 如果字符为=号, 说明该组有垫字符
+      // 如果等号出现在第三位, 说明第四位也是等号, 一共两个垫字符, 该组最后一个数据需要去掉后4位0
+      // 如果等号出现在第四位, 说明只有一个垫字符, 该组最后一个数据需要去掉最后2位0
       if (char === '=') {
         const last = code.length - 1
+        // 根据=号所在下标, 确定需要去掉'0'的位数
         code[last] = code[last].slice(0, (i - 4) * 2)
         break
       }
+      // 如果不为=, 则获取该字符在b64chars中的索引, 并转成2进制
       const c = b64chars.indexOf(char).toString(2)
-      code.push(pad(c, 6))
+      // 前补0, 补够6位
+      code.push(padStart(c, 6))
     }
+    // 此时code数组中每一项都不超过6位二进制码
     bit8code.push(code)
   })
+  // 将bit8code中每一组各个项通过join方法连接成字符串
+  // 然后每8位分割, 此时对应的便是明文字符的二进制码
+  // 再通过reduce将bit8code转成一位数组
   const charArr = bit8code
     .reduce((s, c) => {
       return s.concat(splitByCount(c.join(''), 8))
     }, [])
+    // 通过String.fromCharCode将二进制转成字符串
     .map(each => String.fromCharCode(parseInt(each, 2)))
+  // 将字符串通过join方法连接
   const result = charArr.join('')
   return result
 }
@@ -116,7 +130,7 @@ function decode(str) {
 // const str = encode('MVNU1hnI048')
 // console.log(str)
 // decode(str)
-// console.log(decode(str) === 'MVNU1hnI048');
+// console.log(decode(str) === '<MVNU1></MVNU1>hnI048');
 
 module.exports = {
   encode,
